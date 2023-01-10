@@ -4,6 +4,7 @@ const registerModel = require('../models/authModel.js');
 const fs = require('fs');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const { json } = require('body-parser');
 
 module.exports.userRegister = (req, res) => {
     const form = formidable();
@@ -57,7 +58,7 @@ module.exports.userRegister = (req, res) => {
 
             image.originalFilename = newImageName;
 
-            const newPath = __dirname + `../../uploads/${image.originalFilename}`;
+            const newPath = __dirname + `../../public/uploads/${image.originalFilename}`;
 
             try {
                 const checkUser = await registerModel.findOne({ email });
@@ -97,8 +98,6 @@ module.exports.userRegister = (req, res) => {
                                 successMessage: 'Your register successfull',
                                 token,
                             });
-
-                            console.log('register success!');
                         } else {
                             res.status(500).json({
                                 error: {
@@ -117,4 +116,73 @@ module.exports.userRegister = (req, res) => {
             }
         }
     });
+};
+
+module.exports.userLogin = async (req, res) => {
+    const error = [];
+
+    const { email, password } = req.body;
+
+    if (!email) {
+        error.push('Please provide your email!');
+    }
+
+    if (!password) {
+        error.push('Please provide your password!');
+    }
+
+    if (email && !validator.isEmail(email)) {
+        error.push('Please provide your valid email!');
+    }
+
+    if (error.length > 0) {
+        res.status(400).json({
+            error: { errorMessage: error },
+        });
+    } else {
+        try {
+            const checkUser = await registerModel.findOne({ email }).select('+password');
+
+            if (checkUser) {
+                const matchPassword = await bcrypt.compare(password, checkUser.password);
+
+                if (matchPassword) {
+                    const token = jwt.sign(
+                        {
+                            id: checkUser._id,
+                            email: checkUser.email,
+                            userName: checkUser.userName,
+                            image: checkUser.image,
+                            registerTime: checkUser.createdAt,
+                        },
+                        process.env.SECRET,
+                        { expiresIn: process.env.TOKEN_EXP },
+                    );
+
+                    const options = {
+                        expires: new Date(Date.now() + process.env.COOKIE_EXP * 24 * 60 * 60 * 1000),
+                        httpOnly: true,
+                        sameSite: 'strict',
+                    };
+
+                    res.status(201).cookie('authToken', token, options).json({
+                        successMessage: 'Your login successfull',
+                        token,
+                    });
+                } else {
+                    res.status(400).json({
+                        error: { errorMessage: ['Your email or password not match!'] },
+                    });
+                }
+            } else {
+                res.status(400).json({
+                    error: { errorMessage: ['Your email or password not match!'] },
+                });
+            }
+        } catch (error) {
+            res.status(404).json({
+                error: { errorMessage: ['Internal server error!'] },
+            });
+        }
+    }
 };
