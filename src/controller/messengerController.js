@@ -1,7 +1,7 @@
 const User = require('../models/authModel');
 const Message = require('../models/messageModel');
 const formidable = require('formidable');
-const fs = require('fs');
+const cloudinary = require('cloudinary').v2;
 
 const getLastMessage = async (myId, fdId) => {
     const msg = await Message.findOne({
@@ -104,40 +104,64 @@ module.exports.messageGet = async (req, res) => {
 module.exports.imageMessageSend = async (req, res) => {
     const senderId = req.myId;
     const form = formidable();
-    form.parse(req, (err, fields, files) => {
-        const { senderName, receiveId, imageName } = fields;
-        const newPath = __dirname + `../../public/uploads/${imageName}`;
+    form.parse(req, async (err, fields, files) => {
+        const { senderName, receiveId } = fields;
 
-        files.image.originalFilename = imageName;
-
-        try {
-            fs.copyFile(files.image.filepath, newPath, async (err) => {
-                if (err) {
-                    res.status(500).json({
-                        error: { errorMessage: 'Image upload fail!' },
-                    });
-                } else {
-                    const newData = {
-                        senderId,
-                        senderName,
-                        receiveId,
-                        message: {
-                            text: '',
-                            image: files.image.originalFilename,
-                        },
-                    };
-
-                    const insertMessage = await Message.create(newData);
-                    res.status(201).json({
-                        success: true,
-                        message: insertMessage,
-                    });
-                }
+        if (Object.keys(files).length === 0) {
+            res.status(400).json({
+                error: {
+                    errorMessage: ['Please provide image!'],
+                },
             });
-        } catch (error) {
-            res.status(500).json({
-                error: { errorMessage: error },
+        }
+        if (Object.keys(files).length === 0) {
+            const { size, mimetype } = files.image;
+            const imageSize = size / 1000 / 1000;
+            const imageType = mimetype.split('/')[1];
+
+            if (imageType !== 'png' && imageType !== 'jpg' && imageType !== 'jpeg') {
+                res.status(400).json({
+                    error: {
+                        errorMessage: ['Please provide image!'],
+                    },
+                });
+            } else if (imageSize > 8) {
+                res.status(400).json({
+                    error: {
+                        errorMessage: ['please provide your image less then 8 MB!'],
+                    },
+                });
+            }
+        } else {
+            cloudinary.config({
+                cloud_name: process.env.CLOUD_NAME,
+                api_key: process.env.API_KEY,
+                api_secret: process.env.SECRET_CLD,
+                secure: true,
             });
+
+            try {
+                const result = await cloudinary.uploader.upload(files.image.filepath);
+                const newData = {
+                    senderId,
+                    senderName,
+                    receiveId,
+                    message: {
+                        text: '',
+                        image: result.url,
+                    },
+                };
+
+                const insertMessage = await Message.create(newData);
+                res.status(201).json({
+                    success: true,
+                    message: insertMessage,
+                });
+            } catch (error) {
+                res.status(500).json({
+                    error: { errorMessage: 'Internal server error!' },
+                });
+            }
         }
     });
 };

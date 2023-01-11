@@ -1,10 +1,10 @@
 const formidable = require('formidable');
 const validator = require('validator');
 const registerModel = require('../models/authModel.js');
-const fs = require('fs');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const { json } = require('body-parser');
+
+const cloudinary = require('cloudinary').v2;
 
 module.exports.userRegister = (req, res) => {
     const form = formidable();
@@ -42,8 +42,20 @@ module.exports.userRegister = (req, res) => {
             error.push('please provide password must be 6 character');
         }
 
-        if (Object.keys(files).length === 0) {
+        if (Object.keys(files).length !== 0) {
             error.push('please provide user image');
+        }
+
+        if (Object.keys(files).length === 0) {
+            const { originalFilename, size, mimetype } = files.image;
+            const imageSize = size / 1000 / 1000;
+            const imageType = mimetype.split('/')[1];
+            if (imageType !== 'png' && imageType !== 'jpg' && imageType !== 'jpeg') {
+                error.push('please provide user image');
+            }
+            if (imageSize > 8) {
+                error.push('please provide your image less then 8 MB');
+            }
         }
 
         if (error.length > 0) {
@@ -51,14 +63,12 @@ module.exports.userRegister = (req, res) => {
                 error: { errorMessage: error },
             });
         } else {
-            const getImageName = image.originalFilename;
-            const randNumber = Math.floor(Math.random() * 99999);
-
-            const newImageName = randNumber + getImageName;
-
-            image.originalFilename = newImageName;
-
-            const newPath = __dirname + `../../public/uploads/${image.originalFilename}`;
+            cloudinary.config({
+                cloud_name: process.env.CLOUD_NAME,
+                api_key: process.env.API_KEY,
+                api_secret: process.env.SECRET_CLD,
+                secure: true,
+            });
 
             try {
                 const checkUser = await registerModel.findOne({ email });
@@ -67,45 +77,41 @@ module.exports.userRegister = (req, res) => {
                         error: { errorMessage: ['Your email allready axited.'] },
                     });
                 } else {
-                    fs.copyFile(image.filepath, newPath, async (error) => {
-                        if (!error) {
-                            const userCreate = await registerModel.create({
-                                userName,
-                                email,
-                                password: await bcrypt.hash(password, 10),
-                                image: image.originalFilename,
-                            });
-
-                            const token = jwt.sign(
-                                {
-                                    id: userCreate._id,
-                                    email: userCreate.email,
-                                    userName: userCreate.userName,
-                                    image: userCreate.image,
-                                    registerTime: userCreate.createdAt,
-                                },
-                                process.env.SECRET,
-                                { expiresIn: process.env.TOKEN_EXP },
-                            );
-
-                            const options = {
-                                expires: new Date(Date.now() + process.env.COOKIE_EXP * 24 * 60 * 60 * 1000),
-                                httpOnly: true,
-                                sameSite: 'strict',
-                            };
-
-                            res.status(201).cookie('authToken', token, options).json({
-                                successMessage: 'Your register successfull',
-                                token,
-                            });
-                        } else {
-                            res.status(500).json({
-                                error: {
-                                    errorMessage: ['Internal server error'],
-                                },
-                            });
-                        }
-                    });
+                    try {
+                        const result = await cloudinary.uploader.upload(files.image.filepath);
+                        const userCreate = await registerModel.create({
+                            userName,
+                            email,
+                            password: await bcrypt.hash(password, 10),
+                            image: result.url,
+                        });
+                        const token = jwt.sign(
+                            {
+                                id: userCreate._id,
+                                email: userCreate.email,
+                                userName: userCreate.userName,
+                                image: userCreate.image,
+                                registerTime: userCreate.createdAt,
+                            },
+                            process.env.SECRET,
+                            { expiresIn: process.env.TOKEN_EXP },
+                        );
+                        const options = {
+                            expires: new Date(Date.now() + process.env.COOKIE_EXP * 24 * 60 * 60 * 1000),
+                            httpOnly: true,
+                            sameSite: 'strict',
+                        };
+                        res.status(201).cookie('authToken', token, options).json({
+                            successMessage: 'Your register successfull',
+                            token,
+                        });
+                    } catch (error) {
+                        res.status(404).json({
+                            error: {
+                                errorMessage: ['Image upload fail'],
+                            },
+                        });
+                    }
                 }
             } catch (error) {
                 res.status(500).json({
