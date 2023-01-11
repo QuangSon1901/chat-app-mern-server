@@ -15,7 +15,7 @@ const messengerRoute = require('./routes/messengerRoute.js');
 
 const corsOptions = {
     origin: 'http://localhost:3000',
-    credentials: true,
+    withCredentials: true,
     optionsSuccessStatus: 200, // some legacy browsers (IE11, various SmartTVs) choke on 204
 };
 

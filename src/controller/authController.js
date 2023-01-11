@@ -99,7 +99,8 @@ module.exports.userRegister = (req, res) => {
                         const options = {
                             expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
                             httpOnly: true,
-                            sameSite: 'strict',
+                            sameSite: 'none',
+                            secure: true,
                         };
                         res.status(201).cookie('authToken', token, options).json({
                             successMessage: 'Your register successfull',
@@ -168,7 +169,8 @@ module.exports.userLogin = async (req, res) => {
                     const options = {
                         expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
                         httpOnly: true,
-                        sameSite: 'strict',
+                        sameSite: 'none',
+                        secure: true,
                     };
 
                     res.status(201).cookie('authToken', token, options).json({
