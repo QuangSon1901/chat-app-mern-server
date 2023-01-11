@@ -134,9 +134,9 @@ module.exports.imageMessageSend = async (req, res) => {
             }
         } else {
             cloudinary.config({
-                cloud_name: process.env.CLOUD_NAME,
-                api_key: process.env.API_KEY,
-                api_secret: process.env.SECRET_CLD,
+                cloud_name: 'dxytonwou',
+                api_key: '454662379199425',
+                api_secret: 'DRw_xXTr4ss_SdIQqx - kZTMVO5E',
                 secure: true,
             });
 

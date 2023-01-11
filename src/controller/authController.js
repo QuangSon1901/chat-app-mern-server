@@ -64,9 +64,9 @@ module.exports.userRegister = (req, res) => {
             });
         } else {
             cloudinary.config({
-                cloud_name: process.env.CLOUD_NAME,
-                api_key: process.env.API_KEY,
-                api_secret: process.env.SECRET_CLD,
+                cloud_name: 'dxytonwou',
+                api_key: '454662379199425',
+                api_secret: 'DRw_xXTr4ss_SdIQqx-kZTMVO5E',
                 secure: true,
             });
 
@@ -93,11 +93,11 @@ module.exports.userRegister = (req, res) => {
                                 image: userCreate.image,
                                 registerTime: userCreate.createdAt,
                             },
-                            process.env.SECRET,
-                            { expiresIn: process.env.TOKEN_EXP },
+                            'jahfhbdkhbsdhvdj',
+                            { expiresIn: '7d' },
                         );
                         const options = {
-                            expires: new Date(Date.now() + process.env.COOKIE_EXP * 24 * 60 * 60 * 1000),
+                            expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
                             httpOnly: true,
                             sameSite: 'strict',
                         };
@@ -161,12 +161,12 @@ module.exports.userLogin = async (req, res) => {
                             image: checkUser.image,
                             registerTime: checkUser.createdAt,
                         },
-                        process.env.SECRET,
-                        { expiresIn: process.env.TOKEN_EXP },
+                        'jahfhbdkhbsdhvdj',
+                        { expiresIn: '7d' },
                     );
 
                     const options = {
-                        expires: new Date(Date.now() + process.env.COOKIE_EXP * 24 * 60 * 60 * 1000),
+                        expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
                         httpOnly: true,
                         sameSite: 'strict',
                     };
