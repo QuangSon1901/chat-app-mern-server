@@ -186,3 +186,9 @@ module.exports.userLogin = async (req, res) => {
         }
     }
 };
+
+module.exports.userLogout = (req, res) => {
+    res.status(201).cookie('authToken', '').json({
+        success: true,
+    });
+};
